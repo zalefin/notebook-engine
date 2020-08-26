@@ -128,7 +128,7 @@ def compile_nb(root_dir):
 <ul>
 {}
 </ul>'''.format(grp,
-        '\n'.join(['<li><a href="{}">{}</a></li>'.format(hashpath(h), name) for name, _, h in targets]))
+        '\n'.join(['<li><a href="{}">{}</a></li>'.format(hashpath(h), name) for name, _, h in targets][::-1]))
 
     body = '\n'.join([mksec(k, v) for k, v in index_group_targets.items()])
 
@@ -184,6 +184,5 @@ if __name__ == "__main__":
         else:
             info()
     else:
-        info()
-        # compile_nb()
-        # Popen([BROWSER, 'index.html'], stdout=None)
+        compile_nb(ROOT_DIR)
+        Popen([BROWSER, ROOT_DIR + '/.nbsrc/index.html'], stdout=None)
