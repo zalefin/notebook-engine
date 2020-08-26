@@ -18,33 +18,10 @@ import hashlib
 import re
 from collections import defaultdict
 
+
 TIME_FORMAT = '%Y-%m-%d'
 BROWSER = 'chromium'
 EDITOR = 'nvim'
-# TYPES = ['LEC', 'REC', 'HW', 'OTHER']
-
-class NBDB(object):
-
-    def __init__(self):
-        self.raws = [e for e in os.listdir() if e.endswith('.html') and e != 'index.html']
-        self.entries = [self.parse_entry(e) for e in self.raws]
-
-    def get_by(self, cid=None, ctype=None,
-            year=None, month=None, day=None):
-        ents = [e for e in self.entries]
-        if cid: ents = [e for e in ents if e['id']==cid]
-        if ctype: ents = [e for e in ents if e['type']==ctype]
-        if year: ents = [e for e in ents if e['day']==day]
-        if month: ents = [e for e in ents if e['month']==month]
-        if day: ents = [e for e in ents if e['year']==year]
-        return ents
-
-    @staticmethod
-    def parse_entry(s):
-        s = s[:-5]
-        c_name, c_type, date = s.split('_')
-        day, month, year = date.split('-')
-        return {"id": c_name, "type": c_type, "day": day, "month": month, "year": year}
 
 
 def get_config():
@@ -61,79 +38,10 @@ def create(src_dirs):
     for i, class_name in enumerate(src_dirs):
         print(i, class_name)
     uin_name = int(input('> '))
-    # for i, type_name in enumerate(TYPES):
-    #     print(i, type_name)
-    # uin_type = int(input('> '))
     fname = "{}/notes/{}.md".format(src_dirs[uin_name],
             datetime.datetime.now().strftime(TIME_FORMAT))
     call([EDITOR, fname])
 
-    # TODO fix todoist functionality
-    # print('Committing to Todoist...')
-    # commit_todoist(fname, uin_name)
-    # print('Finished!')
-
-
-def commit_todoist(p, class_i):
-    import todoist
-    from todoist.managers.items import ItemsManager
-
-    data = get_data()
-    api = todoist.TodoistAPI(data['todoist']['token'])
-    api.sync()
-    content = "Review {} : {}".format(data['classes'][class_i]['name'], p[:-3])
-    man = ItemsManager(api)
-    man.add(content=content, priority=2, project_id=data['todoist']['project_id'])
-    api.commit()
-
-
-# def compile_nb_new():
-#     nbdb = NBDB()
-#     jsdata = get_data()
-
-#     with open('index.html', 'w') as f:
-#         f.write('<div>\n')
-#         f.write('<h1>Notebook Spring 2020</h1>\n')
-#         f.write('<a>{}</a>\n'.format(data['name']))
-#         f.write('<div>\n')
-
-#         for c in jsdata['classes']:
-#             cid = c['id']
-#             cname = c['name']
-#             f.write('<div>\n<h2>{}</h2>\n'.format(class_info['name']))  # start class
-
-
-# def compile_nb():
-#     f = os.listdir()
-#     a = []
-#     for v in f:
-#         if v.endswith('.html') and v != 'index.html':
-#             a.append(v)
-
-#     a = sorted(a, reverse=True)
-
-#     data = get_data()
-#     classes = data['classes']
-
-#     other = list(a)
-
-#     with open('index.html', 'w') as f:
-#         f.write('<div>\n')
-#         f.write('<h1>Notebook Spring 2020</h1>\n')
-#         f.write('<a>{}</a>\n'.format(data['name']))
-#         f.write('<div>\n')
-#         for class_info in classes:
-#             f.write('<div>\n<h2>{}</h2>\n'.format(class_info['name']))
-#             for v in a:
-#                 if v.startswith(class_info['id']):
-#                     f.write('<div><a href="{}">{}</a></div>\n'.format(v, v[:-5]))
-#                     other.remove(v)
-#             f.write('</div>\n')
-        
-#         f.write('<div>\n<h2>Other</h2>\n')
-#         for v in other:
-#             f.write('<div><a href="{}">{}</a></div>\n'.format(v, v[:-5]))
-#         f.write('</div>\n')
 
 def compile_nb(root_dir):
     # Get all .md absolute file paths
