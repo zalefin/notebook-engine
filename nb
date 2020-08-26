@@ -86,7 +86,6 @@ def compile_nb(root_dir):
         rmhashes = [journal[fp] for fp in removed + modified]
         for h in rmhashes:
             hp = hashpath(h)
-            print(hp)
             try:
                 os.remove(hp)
             except FileNotFoundError:
@@ -102,11 +101,9 @@ def compile_nb(root_dir):
 
     # Compile targets with pandoc
     for src_path, typ, h in build_targets:
-        print('compiling', src_path)
         Popen(['pandoc', src_path, '-o', hashpath(h)])
 
     # Get ALL links for index
-    print(note_files)
     fname_pattern = re.compile(r'.*\/([^\/]+)\..+$')
     all_targets = list(zip(
         map(lambda v: fname_pattern.findall(v)[0], note_files), # name
