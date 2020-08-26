@@ -1,0 +1,283 @@
+#!/usr/bin/env python3
+"""
+Notebook Engine
+===============
+Zachary Lefin
+Version 3
+
+Manage and generate html note files and compile
+an index to keep track of them.
+"""
+import sys
+from pathlib import Path
+import json
+from subprocess import call, Popen
+import datetime
+import os
+import hashlib
+import re
+from collections import defaultdict
+
+TIME_FORMAT = '%Y-%m-%d'
+BROWSER = 'chromium'
+EDITOR = 'nvim'
+# TYPES = ['LEC', 'REC', 'HW', 'OTHER']
+
+class NBDB(object):
+
+    def __init__(self):
+        self.raws = [e for e in os.listdir() if e.endswith('.html') and e != 'index.html']
+        self.entries = [self.parse_entry(e) for e in self.raws]
+
+    def get_by(self, cid=None, ctype=None,
+            year=None, month=None, day=None):
+        ents = [e for e in self.entries]
+        if cid: ents = [e for e in ents if e['id']==cid]
+        if ctype: ents = [e for e in ents if e['type']==ctype]
+        if year: ents = [e for e in ents if e['day']==day]
+        if month: ents = [e for e in ents if e['month']==month]
+        if day: ents = [e for e in ents if e['year']==year]
+        return ents
+
+    @staticmethod
+    def parse_entry(s):
+        s = s[:-5]
+        c_name, c_type, date = s.split('_')
+        day, month, year = date.split('-')
+        return {"id": c_name, "type": c_type, "day": day, "month": month, "year": year}
+
+
+def get_config():
+    if not os.path.isfile('./config.json'):
+        print('missing config!')
+        exit()
+
+    with open('./config.json', 'r') as f:
+        data = f.read()
+    return json.loads(data)
+
+
+def create(src_dirs):
+    for i, class_name in enumerate(src_dirs):
+        print(i, class_name)
+    uin_name = int(input('> '))
+    # for i, type_name in enumerate(TYPES):
+    #     print(i, type_name)
+    # uin_type = int(input('> '))
+    fname = "{}/notes/{}.md".format(src_dirs[uin_name],
+            datetime.datetime.now().strftime(TIME_FORMAT))
+    call([EDITOR, fname])
+
+    # TODO fix todoist functionality
+    # print('Committing to Todoist...')
+    # commit_todoist(fname, uin_name)
+    # print('Finished!')
+
+
+def commit_todoist(p, class_i):
+    import todoist
+    from todoist.managers.items import ItemsManager
+
+    data = get_data()
+    api = todoist.TodoistAPI(data['todoist']['token'])
+    api.sync()
+    content = "Review {} : {}".format(data['classes'][class_i]['name'], p[:-3])
+    man = ItemsManager(api)
+    man.add(content=content, priority=2, project_id=data['todoist']['project_id'])
+    api.commit()
+
+
+# def compile_nb_new():
+#     nbdb = NBDB()
+#     jsdata = get_data()
+
+#     with open('index.html', 'w') as f:
+#         f.write('<div>\n')
+#         f.write('<h1>Notebook Spring 2020</h1>\n')
+#         f.write('<a>{}</a>\n'.format(data['name']))
+#         f.write('<div>\n')
+
+#         for c in jsdata['classes']:
+#             cid = c['id']
+#             cname = c['name']
+#             f.write('<div>\n<h2>{}</h2>\n'.format(class_info['name']))  # start class
+
+
+# def compile_nb():
+#     f = os.listdir()
+#     a = []
+#     for v in f:
+#         if v.endswith('.html') and v != 'index.html':
+#             a.append(v)
+
+#     a = sorted(a, reverse=True)
+
+#     data = get_data()
+#     classes = data['classes']
+
+#     other = list(a)
+
+#     with open('index.html', 'w') as f:
+#         f.write('<div>\n')
+#         f.write('<h1>Notebook Spring 2020</h1>\n')
+#         f.write('<a>{}</a>\n'.format(data['name']))
+#         f.write('<div>\n')
+#         for class_info in classes:
+#             f.write('<div>\n<h2>{}</h2>\n'.format(class_info['name']))
+#             for v in a:
+#                 if v.startswith(class_info['id']):
+#                     f.write('<div><a href="{}">{}</a></div>\n'.format(v, v[:-5]))
+#                     other.remove(v)
+#             f.write('</div>\n')
+        
+#         f.write('<div>\n<h2>Other</h2>\n')
+#         for v in other:
+#             f.write('<div><a href="{}">{}</a></div>\n'.format(v, v[:-5]))
+#         f.write('</div>\n')
+
+def compile_nb(root_dir):
+    # Get all .md absolute file paths
+    src_dirs = walk_src_dirs(root_dir)
+    note_files = []
+    types = {}
+    p = re.compile(r'.*\/([^\/]+)')
+    for src_dir in src_dirs:
+        abs_path = src_dir + '/notes/'
+        typ = p.findall(src_dir)[0]
+        for f in os.listdir(abs_path):
+            if str(f).endswith('.md'):
+                fpath = abs_path + f
+                note_files.append(fpath)
+                types[fpath] = typ
+
+    # Hash all files at paths
+    current_hashes = {}
+    for fp in note_files:
+        with open(fp, 'rb') as f:
+            dat = f.read()
+        current_hashes[fp] = hashlib.sha1(dat).hexdigest()
+
+    journal = load_journal(root_dir)
+
+    # Difflists
+    added = [fp for fp in note_files if fp not in journal.keys()]
+    removed = [fp for fp in journal.keys() if fp not in note_files]
+    modified = [fp for fp in note_files
+            if fp in journal.keys() and current_hashes[fp] != journal[fp]]
+
+    # Save journal to file
+    with open(root_dir + '/journal.json', 'w') as f:
+        f.write(json.dumps(current_hashes, indent=4))
+
+    # Set up folder for sources
+    hashpath = lambda h: '{}/nbsrc/{}.html'.format(root_dir, h)
+    if not os.path.exists(root_dir + '/nbsrc'):
+        os.mkdir(root_dir + '/nbsrc')
+    else:
+        # Wipe removed src files
+        rmhashes = [journal[fp] for fp in removed]
+        for h in rmhashes:
+            hp = hashpath(h)
+            print(hp)
+            try:
+                os.remove(hp)
+            except FileNotFoundError:
+                print(hp, 'does not exist!')
+
+    # Build list of target tuples (src path, type, hash)
+    target_paths = added + modified
+    build_targets = list(zip(
+        target_paths,                                       # path
+        map(lambda v: types[v], target_paths),              # group 
+        map(lambda v: current_hashes[v], target_paths),     # hash
+        ))
+
+    # Compile targets with pandoc
+    for src_path, typ, h in build_targets:
+        print('compiling', src_path)
+        Popen(['pandoc', src_path, '-o', hashpath(h)])
+
+    # Get ALL links for index
+    print(note_files)
+    fname_pattern = re.compile(r'.*\/([^\/]+)\..+$')
+    all_targets = list(zip(
+        map(lambda v: fname_pattern.findall(v)[0], note_files), # name
+        map(lambda v: types[v], note_files),                    # group
+        map(lambda v: current_hashes[v], note_files),           # hash
+        ))
+    index_group_targets = defaultdict(lambda: []) # note: lambda funtion for factory
+    for target in all_targets:
+        index_group_targets[target[1]].append(target)
+
+    # Compile index.html
+    doc = '''
+<!doctype html>
+<html>
+<body>
+<h1>{}</h1>
+{}
+</body>
+</html>'''
+    mksec = lambda grp, targets: '''
+<h2>{}</h2>
+<ul>
+{}
+</ul>'''.format(grp,
+        '\n'.join(['<li><a href="{}">{}</a></li>'.format(hashpath(h), name) for name, _, h in targets]))
+
+    body = '\n'.join([mksec(k, v) for k, v in index_group_targets.items()])
+
+    config = get_config()
+    with open(root_dir + '/nbsrc/index.html', 'w') as f:
+        f.write(doc.format(config['title'], body))
+
+
+def walk_src_dirs(root_dir):
+    walker = os.walk(root_dir)
+    surface_folders = next(walker)
+    src_dirs = []
+    for folder in walker:
+        if 'notes' in folder[1]:
+            src_dirs.append(folder[0])
+
+    return src_dirs
+
+
+def load_journal(root_dir):
+    try:
+        # create if not exists
+        with open('{}/journal.json'.format(root_dir), 'x') as f:
+            f.write('{}')
+    except FileExistsError:
+        pass
+
+    with open('{}/journal.json'.format(root_dir), 'r') as f:
+        journal = json.loads(f.read())
+
+    return journal
+
+
+def do_hooks(hooks):
+    for hook in hooks:
+        call(hook.split(' '))
+
+if __name__ == "__main__":
+    config = get_config()
+    info = lambda: print('./nb [create|compile|open]')
+    ROOT_DIR = config['root_dir']
+    if len(sys.argv) > 1:
+        argv = sys.argv
+        if argv[1] == 'create':
+            do_hooks(config['create_hooks'])
+            create(walk_src_dirs(ROOT_DIR))
+        elif argv[1] == 'compile':
+            do_hooks(config['compile_hooks'])
+            compile_nb(ROOT_DIR)
+        elif argv[1] == 'open':
+            Popen([BROWSER, ROOT_DIR + '/index.html'], stdout=None)
+        else:
+            info()
+    else:
+        info()
+        # compile_nb()
+        # Popen([BROWSER, 'index.html'], stdout=None)
