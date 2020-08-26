@@ -78,9 +78,9 @@ def compile_nb(root_dir):
         f.write(json.dumps(current_hashes, indent=4))
 
     # Set up folder for sources
-    hashpath = lambda h: '{}/nbsrc/{}.html'.format(root_dir, h)
-    if not os.path.exists(root_dir + '/nbsrc'):
-        os.mkdir(root_dir + '/nbsrc')
+    hashpath = lambda h: '{}/.nbsrc/{}.html'.format(root_dir, h)
+    if not os.path.exists(root_dir + '/.nbsrc'):
+        os.mkdir(root_dir + '/.nbsrc')
     else:
         # Wipe removed src files
         rmhashes = [journal[fp] for fp in removed + modified]
@@ -136,7 +136,7 @@ def compile_nb(root_dir):
     body = '\n'.join([mksec(k, v) for k, v in index_group_targets.items()])
 
     config = get_config()
-    with open(root_dir + '/nbsrc/index.html', 'w') as f:
+    with open(root_dir + '/.nbsrc/index.html', 'w') as f:
         f.write(doc.format(config['title'], body))
 
 
@@ -183,7 +183,7 @@ if __name__ == "__main__":
             do_hooks(config['compile_hooks'])
             compile_nb(ROOT_DIR)
         elif argv[1] == 'open':
-            Popen([BROWSER, ROOT_DIR + '/nbsrc/index.html'], stdout=None)
+            Popen([BROWSER, ROOT_DIR + '/.nbsrc/index.html'], stdout=None)
         else:
             info()
     else:
