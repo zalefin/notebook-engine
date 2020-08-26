@@ -183,7 +183,7 @@ if __name__ == "__main__":
             do_hooks(config['compile_hooks'])
             compile_nb(ROOT_DIR)
         elif argv[1] == 'open':
-            Popen([BROWSER, ROOT_DIR + '/index.html'], stdout=None)
+            Popen([BROWSER, ROOT_DIR + '/nbsrc/index.html'], stdout=None)
         else:
             info()
     else:
