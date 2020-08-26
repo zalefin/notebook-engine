@@ -83,7 +83,7 @@ def compile_nb(root_dir):
         os.mkdir(root_dir + '/nbsrc')
     else:
         # Wipe removed src files
-        rmhashes = [journal[fp] for fp in removed]
+        rmhashes = [journal[fp] for fp in removed + modified]
         for h in rmhashes:
             hp = hashpath(h)
             print(hp)
@@ -168,6 +168,7 @@ def load_journal(root_dir):
 def do_hooks(hooks):
     for hook in hooks:
         call(hook.split(' '))
+
 
 if __name__ == "__main__":
     config = get_config()
