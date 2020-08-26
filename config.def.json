@@ -1,0 +1,8 @@
+{
+    "title": "The Title of Your Notebook",
+    "root_dir": "/home/user/your_folder/your_notebook",
+    "browser": "chromium",
+    "editor": "vim",
+    "create_hooks": ["echo creating"],
+    "compile_hooks": ["echo compiling"]
+}
