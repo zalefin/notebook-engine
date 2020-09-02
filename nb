@@ -22,6 +22,7 @@ from collections import defaultdict
 TIME_FORMAT = '%Y-%m-%d'
 BROWSER = 'chromium'
 EDITOR = 'nvim'
+MATHJAX = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML'
 
 
 def get_config():
@@ -100,8 +101,9 @@ def build_nb(root_dir):
         ))
 
     # Build targets with pandoc
+    procs = []
     for src_path, typ, h in build_targets:
-        Popen(['pandoc', src_path, '-o', hashpath(h)])
+        procs.append(Popen(['pandoc', src_path, '-o', hashpath(h), '-t', 'html5', '--mathjax={}'.format(MATHJAX)]))
 
     # Get ALL links for index
     fname_pattern = re.compile(r'.*\/([^\/]+)\..+$')
@@ -136,6 +138,23 @@ def build_nb(root_dir):
     with open(root_dir + '/.nbsrc/index.html', 'w') as f:
         f.write(doc.format(config['title'], body))
 
+    # Wait for all procs to finish
+    finished = False
+    while not finished:
+        t = 0
+        for p in procs:
+            if p.poll() == None:
+                t += 1
+        if t == 0:
+            finished = True
+
+    # Append script tag to front of all html files
+    s_tag = '<script src="{}"></script>'.format(MATHJAX)
+    for _, _, h in build_targets:
+        with open(hashpath(h), 'r+') as f:
+            content = f.read()
+            f.seek(0, 0)
+            f.write(s_tag + '\n' + content)
 
 def walk_src_dirs(root_dir):
     walker = os.walk(root_dir)
