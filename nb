@@ -43,7 +43,7 @@ def create(src_dirs):
     call([EDITOR, fname])
 
 
-def compile_nb(root_dir):
+def build_nb(root_dir):
     # Get all .md absolute file paths
     src_dirs = walk_src_dirs(root_dir)
     note_files = []
@@ -99,7 +99,7 @@ def compile_nb(root_dir):
         map(lambda v: current_hashes[v], target_paths),     # hash
         ))
 
-    # Compile targets with pandoc
+    # Build targets with pandoc
     for src_path, typ, h in build_targets:
         Popen(['pandoc', src_path, '-o', hashpath(h)])
 
@@ -114,7 +114,7 @@ def compile_nb(root_dir):
     for target in all_targets:
         index_group_targets[target[1]].append(target)
 
-    # Compile index.html
+    # Build index.html
     doc = '''
 <!doctype html>
 <html>
@@ -169,20 +169,20 @@ def do_hooks(hooks):
 
 if __name__ == "__main__":
     config = get_config()
-    info = lambda: print('./nb [create|compile|open]')
+    info = lambda: print('./nb [create|build|open]')
     ROOT_DIR = config['root_dir']
     if len(sys.argv) > 1:
         argv = sys.argv
         if argv[1] == 'create':
             do_hooks(config['create_hooks'])
             create(walk_src_dirs(ROOT_DIR))
-        elif argv[1] == 'compile':
-            do_hooks(config['compile_hooks'])
-            compile_nb(ROOT_DIR)
+        elif argv[1] == 'build':
+            do_hooks(config['build_hooks'])
+            build_nb(ROOT_DIR)
         elif argv[1] == 'open':
             Popen([BROWSER, ROOT_DIR + '/.nbsrc/index.html'], stdout=None)
         else:
             info()
     else:
-        compile_nb(ROOT_DIR)
+        build_nb(ROOT_DIR)
         Popen([BROWSER, ROOT_DIR + '/.nbsrc/index.html'], stdout=None)

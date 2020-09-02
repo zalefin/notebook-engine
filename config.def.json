@@ -4,5 +4,5 @@
     "browser": "chromium",
     "editor": "vim",
     "create_hooks": ["echo creating"],
-    "compile_hooks": ["echo compiling"]
+    "build_hooks": ["echo building"]
 }
