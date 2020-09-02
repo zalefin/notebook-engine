@@ -128,7 +128,7 @@ def build_nb(root_dir):
 <ul>
 {}
 </ul>'''.format(grp,
-        '\n'.join(['<li><a href="{}">{}</a></li>'.format(hashpath(h), name) for name, _, h in sorted(targets, reverse=True)][::-1]))
+        '\n'.join(['<li><a href="{}">{}</a></li>'.format(hashpath(h), name) for name, _, h in sorted(targets)][::-1]))
 
     body = '\n'.join([mksec(k, v) for k, v in index_group_targets.items()])
 
